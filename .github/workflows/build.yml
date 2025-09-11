@@ -34,13 +34,17 @@ jobs:
         NEW_VERSION=$(npm version patch --no-git-tag-version)
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add package.json lib/
+        git add package.json
         git commit -m "Release $NEW_VERSION [skip ci]" || exit 0
         git tag $NEW_VERSION
         git push origin main --tags
         
-        # Create GitHub release with built assets
+        # Create tarball with built assets
+        npm pack
+        
+        # Create GitHub release with built tarball
         gh release create $NEW_VERSION \
           --title "Release $NEW_VERSION" \
           --notes "Auto-generated release with built artifacts" \
-          --generate-notes
+          --generate-notes \
+          *.tgz
