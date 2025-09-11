@@ -311,6 +311,16 @@ RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEv
                 event.notes = notes;
             }
             
+            NSString *url = eventStruct.url();
+            if (url && url.length > 0) {
+                event.URL = [NSURL URLWithString:url];
+            }
+            
+            // Handle allDay property
+            if (eventStruct.allDay().has_value()) {
+                event.allDay = eventStruct.allDay().value();
+            }
+            
             NSString *calendarId = eventStruct.calendar();
             if (calendarId && calendarId.length > 0) {
                 EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
@@ -320,6 +330,46 @@ RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEv
             } else {
                 event.calendar = self.eventStore.defaultCalendarForNewEvents;
             }
+            
+            // Handle alarms safely
+            if (eventStruct.alarms().has_value()) {
+                auto alarmsVector = eventStruct.alarms().value();
+                NSMutableArray<EKAlarm *> *ekAlarms = [NSMutableArray array];
+                
+                for (size_t i = 0; i < alarmsVector.size(); i++) {
+                    auto alarmStruct = alarmsVector[i];
+                    EKAlarm *alarm = nil;
+                    
+                    @try {
+                        // Check if it's a date-based alarm
+                        NSString *alarmDate = alarmStruct.date();
+                        if (alarmDate && alarmDate.length > 0) {
+                            NSDate *date = [self dateFromISO8601String:alarmDate];
+                            if (date) {
+                                alarm = [EKAlarm alarmWithAbsoluteDate:date];
+                            }
+                        }
+                        // Check if it's a minutes-based alarm
+                        else if (alarmStruct.minutes().has_value()) {
+                            double minutes = alarmStruct.minutes().value();
+                            NSTimeInterval offset = -minutes * 60; // Negative for "before" event
+                            alarm = [EKAlarm alarmWithRelativeOffset:offset];
+                        }
+                        
+                        if (alarm) {
+                            [ekAlarms addObject:alarm];
+                        }
+                    } @catch (NSException *exception) {
+                        NSLog(@"⚠️ Error creating alarm: %@", exception.reason);
+                        // Continue with other alarms
+                    }
+                }
+                
+                if (ekAlarms.count > 0) {
+                    event.alarms = ekAlarms;
+                }
+            }
+            
         } @catch (NSException *exception) {
             reject(@"event_property_error", [NSString stringWithFormat:@"Error setting event properties: %@", exception.reason], nil);
             return;
