@@ -576,4 +576,103 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         
         return 1; // Default fallback
     }
+
+    @Override
+    public void saveEvent(String title, String startDate, String endDate, 
+                         String location, String notes, String calendarId, Promise promise) {
+        ContentResolver cr = getReactApplicationContext().getContentResolver();
+        
+        ContentValues values = new ContentValues();
+        values.put(Events.TITLE, title);
+        values.put(Events.DESCRIPTION, notes);
+        values.put(Events.EVENT_LOCATION, location);
+        
+        try {
+            long startMillis = ISO_8601_FORMAT.parse(startDate).getTime();
+            long endMillis = ISO_8601_FORMAT.parse(endDate).getTime();
+            
+            values.put(Events.DTSTART, startMillis);
+            values.put(Events.DTEND, endMillis);
+            values.put(Events.EVENT_TIMEZONE, TimeZone.getDefault().getID());
+            
+            // Use provided calendar or default
+            long calId = TextUtils.isEmpty(calendarId) ? getDefaultCalendarId() : Long.parseLong(calendarId);
+            values.put(Events.CALENDAR_ID, calId);
+            
+            Uri uri = cr.insert(Events.CONTENT_URI, values);
+            if (uri != null) {
+                String eventId = uri.getLastPathSegment();
+                promise.resolve(eventId);
+            } else {
+                promise.reject("event_save_failed", "Failed to save event");
+            }
+        } catch (ParseException e) {
+            promise.reject("date_parse_error", "Invalid date format", e);
+        } catch (Exception e) {
+            promise.reject("event_save_failed", "Failed to save event", e);
+        }
+    }
+
+    @Override
+    public void updateEvent(String eventId, String title, String startDate, String endDate,
+                           String location, String notes, String calendarId, Promise promise) {
+        ContentResolver cr = getReactApplicationContext().getContentResolver();
+        Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
+        
+        ContentValues values = new ContentValues();
+        if (!TextUtils.isEmpty(title)) values.put(Events.TITLE, title);
+        if (!TextUtils.isEmpty(notes)) values.put(Events.DESCRIPTION, notes);
+        if (!TextUtils.isEmpty(location)) values.put(Events.EVENT_LOCATION, location);
+        
+        try {
+            if (!TextUtils.isEmpty(startDate)) {
+                long startMillis = ISO_8601_FORMAT.parse(startDate).getTime();
+                values.put(Events.DTSTART, startMillis);
+            }
+            if (!TextUtils.isEmpty(endDate)) {
+                long endMillis = ISO_8601_FORMAT.parse(endDate).getTime();
+                values.put(Events.DTEND, endMillis);
+            }
+            if (!TextUtils.isEmpty(calendarId)) {
+                values.put(Events.CALENDAR_ID, Long.parseLong(calendarId));
+            }
+            
+            int rowsUpdated = cr.update(uri, values, null, null);
+            if (rowsUpdated > 0) {
+                promise.resolve(eventId);
+            } else {
+                promise.reject("event_update_failed", "No rows updated");
+            }
+        } catch (Exception e) {
+            promise.reject("event_update_failed", "Failed to update event", e);
+        }
+    }
+
+    @Override
+    public void removeEvent(String eventId, Promise promise) {
+        ContentResolver cr = getReactApplicationContext().getContentResolver();
+        Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
+        
+        try {
+            int rowsDeleted = cr.delete(uri, null, null);
+            promise.resolve(rowsDeleted > 0);
+        } catch (Exception e) {
+            promise.reject("event_removal_failed", "Failed to remove event", e);
+        }
+    }
+
+    @Override
+    public void openEventInCalendar(String eventId, Promise promise) {
+        // Android doesn't have a direct equivalent to iOS's event editing
+        // We can open the calendar app, but not to a specific event
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse("content://com.android.calendar/time"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getReactApplicationContext().startActivity(intent);
+            promise.resolve(null);
+        } catch (Exception e) {
+            promise.reject("calendar_open_failed", "Failed to open calendar", e);
+        }
+    }
 }
