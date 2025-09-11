@@ -25,6 +25,7 @@ RCT_EXPORT_MODULE(RNCalendarEventsNativeSpec)
         // Log that native module was initialized
         NSLog(@"🚀 CalendarEventsNative: Native module initialized!");
         NSLog(@"📱 Module registered as: %@", NSStringFromClass([self class]));
+        NSLog(@"🔍 Module export name should be: RNCalendarEventsNativeSpec");
         NSLog(@"🔧 TurboModule support: %@", @"Enabled");
         NSLog(@"✅ Ready to receive method calls from JavaScript");
     }
@@ -562,7 +563,8 @@ RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-    return std::make_shared<facebook::react::NativeCalendarEventsNativeSpecJSI>(params);
+    return std::make_shared<facebook::react::ObjCTurboModule>(params);
+    
 }
 #endif
 
