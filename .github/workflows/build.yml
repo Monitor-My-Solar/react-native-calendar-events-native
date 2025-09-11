@@ -1,0 +1,37 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build package
+      run: npm run prepare
+    
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Auto-increment version on main branch pushes
+        npm version patch --no-git-tag-version
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add package.json
+        git commit -m "Auto-increment version [skip ci]" || exit 0
+        git push || exit 0

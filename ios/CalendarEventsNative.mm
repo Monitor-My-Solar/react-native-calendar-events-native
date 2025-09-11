@@ -29,11 +29,18 @@ RCT_EXPORT_MODULE()
     return NO;
 }
 
+RCT_EXPORT_METHOD(debugModuleMethods:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    NSLog(@"🔍 CalendarEventsNative: Module methods available!");
+    NSLog(@"🔍 Available methods: requestPermissions, checkPermissions, fetchAllCalendars, findOrCreateCalendar, removeCalendar, fetchAllEvents, findEventById, saveEvent, updateEvent, removeEvent, openEventInCalendar");
+    resolve(@"Methods logged to console");
+}
+
 #pragma mark - Permission Methods
 
-- (void)requestPermissions:(BOOL)writeOnly
-                   resolve:(RCTPromiseResolveBlock)resolve
-                    reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(requestPermissions:(BOOL)writeOnly
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     if (@available(iOS 17.0, *)) {
         [self.eventStore requestFullAccessToEventsWithCompletion:^(BOOL granted, NSError *error) {
             if (error) {
@@ -53,9 +60,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)checkPermissions:(BOOL)writeOnly
-                resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(checkPermissions:(BOOL)writeOnly
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKAuthorizationStatus status = [EKEventStore authorizationStatusForEntityType:EKEntityTypeEvent];
     
     NSString *statusString;
@@ -82,8 +89,8 @@ RCT_EXPORT_MODULE()
 
 #pragma mark - Calendar Methods
 
-- (void)fetchAllCalendars:(RCTPromiseResolveBlock)resolve
-                   reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(fetchAllCalendars:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
     NSMutableArray *calendarData = [NSMutableArray array];
     
@@ -118,9 +125,9 @@ RCT_EXPORT_MODULE()
     resolve(calendarData);
 }
 
-- (void)findOrCreateCalendar:(NSDictionary *)calendarDict
-                     resolve:(RCTPromiseResolveBlock)resolve
-                      reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     NSString *title = calendarDict[@"title"] ?: @"Calendar";
     
     // First, try to find existing calendar
@@ -167,9 +174,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)removeCalendar:(NSString *)calendarId
-               resolve:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(removeCalendar:(NSString *)calendarId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
     
     if (!calendar) {
@@ -189,11 +196,11 @@ RCT_EXPORT_MODULE()
 
 #pragma mark - Event Methods
 
-- (void)fetchAllEvents:(NSString *)startDate
-               endDate:(NSString *)endDate
-           calendarIds:(NSArray<NSString *> *)calendarIds
-               resolve:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(fetchAllEvents:(NSString *)startDate
+                  endDate:(NSString *)endDate
+                  calendarIds:(NSArray<NSString *> *)calendarIds
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     NSDate *start = [self dateFromISO8601String:startDate];
     NSDate *end = [self dateFromISO8601String:endDate];
     
@@ -221,9 +228,9 @@ RCT_EXPORT_MODULE()
     resolve(eventData);
 }
 
-- (void)findEventById:(NSString *)eventId
-              resolve:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(findEventById:(NSString *)eventId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
     
     if (event) {
@@ -233,9 +240,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)saveEvent:(NSDictionary *)eventDict
-          resolve:(RCTPromiseResolveBlock)resolve
-           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(saveEvent:(NSDictionary *)eventDict
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKEvent *event = [EKEvent eventWithEventStore:self.eventStore];
     
     [self applyEventProperties:eventDict toEvent:event];
@@ -250,10 +257,10 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)updateEvent:(NSString *)eventId
-              event:(NSDictionary *)eventDict
-            resolve:(RCTPromiseResolveBlock)resolve
-             reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
+                  event:(NSDictionary *)eventDict
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
     
     if (!event) {
@@ -273,9 +280,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)removeEvent:(NSString *)eventId
-            resolve:(RCTPromiseResolveBlock)resolve
-             reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(removeEvent:(NSString *)eventId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
     
     if (!event) {
@@ -293,9 +300,9 @@ RCT_EXPORT_MODULE()
     }
 }
 
-- (void)openEventInCalendar:(NSString *)eventId
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
         EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
         

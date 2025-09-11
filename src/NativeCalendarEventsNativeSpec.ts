@@ -2,6 +2,7 @@ import type { TurboModule } from 'react-native';
 import { TurboModuleRegistry } from 'react-native';
 
 export interface Spec extends TurboModule {
+  debugModuleMethods(): Promise<string>;
   requestPermissions(writeOnly: boolean): Promise<string>;
   checkPermissions(writeOnly: boolean): Promise<string>;
   fetchAllCalendars(): Promise<Array<{

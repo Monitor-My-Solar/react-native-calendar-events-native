@@ -71,6 +71,13 @@ export type AllPermissionStatus = AuthorizationStatus | PermissionStatus;
 
 class CalendarEvents {
   /**
+   * Debug method to check available methods
+   */
+  async debugModuleMethods(): Promise<string> {
+    return CalendarEventsNative.debugModuleMethods();
+  }
+
+  /**
    * Request calendar permissions
    */
   async requestPermissions(writeOnly: boolean = false): Promise<AllPermissionStatus> {
