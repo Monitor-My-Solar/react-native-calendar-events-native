@@ -217,32 +217,22 @@ class CalendarEvents {
    * Update an event
    */
   async updateEvent(eventId: string, event: Partial<CalendarEvent>): Promise<string> {
-    const processedEvent: any = { ...event };
-    if (event.startDate) {
-      processedEvent.startDate = typeof event.startDate === 'string' 
-        ? event.startDate 
-        : event.startDate.toISOString();
-    }
-    if (event.endDate) {
-      processedEvent.endDate = typeof event.endDate === 'string' 
-        ? event.endDate 
-        : event.endDate.toISOString();
-    }
+    const startDate = event.startDate 
+      ? (typeof event.startDate === 'string' ? event.startDate : event.startDate.toISOString())
+      : '';
+    const endDate = event.endDate 
+      ? (typeof event.endDate === 'string' ? event.endDate : event.endDate.toISOString())
+      : '';
     
-    if (event.alarms) {
-      processedEvent.alarms = event.alarms.map((alarm: CalendarAlarm) => ({
-        ...alarm,
-        date: alarm.date && typeof alarm.date !== 'string' 
-          ? alarm.date.toISOString() 
-          : alarm.date,
-        structuredLocation: alarm.structuredLocation ? {
-          ...alarm.structuredLocation,
-          proximity: alarm.structuredLocation.proximity || undefined
-        } : undefined
-      }));
-    }
-    
-    return CalendarEventsNative.updateEvent(eventId, processedEvent);
+    return CalendarEventsNative.updateEvent(
+      eventId,
+      event.title || '',
+      startDate,
+      endDate,
+      event.location || '',
+      event.notes || '',
+      event.calendar || ''
+    );
   }
 
   /**

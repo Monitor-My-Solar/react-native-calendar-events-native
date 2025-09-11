@@ -334,7 +334,12 @@ RCT_EXPORT_METHOD(saveEvent:(NSString *)title
 }
 
 RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
-                  event:(NSDictionary *)eventDict
+                  title:(NSString *)title
+                  startDate:(NSString *)startDate
+                  endDate:(NSString *)endDate
+                  location:(NSString *)location
+                  notes:(NSString *)notes
+                  calendarId:(NSString *)calendarId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -350,7 +355,28 @@ RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
             return;
         }
         
-        [self applyEventProperties:eventDict toEvent:event];
+        // Update event properties directly
+        if (title && title.length > 0) {
+            event.title = title;
+        }
+        if (startDate && startDate.length > 0) {
+            event.startDate = [self dateFromISO8601String:startDate];
+        }
+        if (endDate && endDate.length > 0) {
+            event.endDate = [self dateFromISO8601String:endDate];
+        }
+        if (location && location.length > 0) {
+            event.location = location;
+        }
+        if (notes && notes.length > 0) {
+            event.notes = notes;
+        }
+        if (calendarId && calendarId.length > 0) {
+            EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+            if (calendar) {
+                event.calendar = calendar;
+            }
+        }
         
         NSError *error;
         BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
