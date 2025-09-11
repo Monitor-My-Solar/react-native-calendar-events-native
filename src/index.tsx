@@ -70,6 +70,13 @@ export type PermissionStatus =
 export type AllPermissionStatus = AuthorizationStatus | PermissionStatus;
 
 class CalendarEvents {
+  constructor() {
+    // Log available methods on class instantiation
+    console.log('🚀 CalendarEvents: JavaScript wrapper initialized!');
+    console.log('📋 Available methods:', Object.getOwnPropertyNames(CalendarEventsNative));
+    console.log('🔍 CalendarEventsNative object:', CalendarEventsNative);
+  }
+
   /**
    * Debug method to check available methods
    */

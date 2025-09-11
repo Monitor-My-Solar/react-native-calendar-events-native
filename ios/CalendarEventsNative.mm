@@ -21,6 +21,23 @@ RCT_EXPORT_MODULE()
 - (instancetype)init {
     if (self = [super init]) {
         self.eventStore = [[EKEventStore alloc] init];
+        
+        // Log available methods on module initialization
+        NSLog(@"🚀 CalendarEventsNative: Module initialized successfully!");
+        NSLog(@"📋 Exported methods:");
+        NSLog(@"   • debugModuleMethods");
+        NSLog(@"   • requestPermissions");
+        NSLog(@"   • checkPermissions");
+        NSLog(@"   • fetchAllCalendars");
+        NSLog(@"   • findOrCreateCalendar");
+        NSLog(@"   • removeCalendar");
+        NSLog(@"   • fetchAllEvents");
+        NSLog(@"   • findEventById");
+        NSLog(@"   • saveEvent");
+        NSLog(@"   • updateEvent");
+        NSLog(@"   • removeEvent");
+        NSLog(@"   • openEventInCalendar");
+        NSLog(@"✅ All methods exported with RCT_EXPORT_METHOD");
     }
     return self;
 }
