@@ -1,0 +1,60 @@
+{
+  "name": "react-native-calendar-events-native",
+  "version": "1.0.6",
+  "description": "React Native module for native calendar event creation on iOS and Android",
+  "main": "lib/commonjs/index",
+  "module": "lib/module/index",
+  "react-native": "src/index",
+  "source": "src/index",
+  "types": "lib/typescript/index.d.ts",
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "*.podspec"
+  ],
+  "scripts": {
+    "prepare": "bob build"
+  },
+  "author": "zakery292",
+  "license": "MIT",
+  "homepage": "https://github.com/Monitor-My-Solar/react-native-calendar-events-native",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Monitor-My-Solar/react-native-calendar-events-native.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Monitor-My-Solar/react-native-calendar-events-native/issues"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "codegenConfig": {
+    "name": "RNCalendarEventsNativeSpec",
+    "type": "modules",
+    "jsSrcsDir": "./src",
+    "android": {
+      "javaPackageName": "com.calendarevents"
+    }
+  },
+  "devDependencies": {
+    "react-native-builder-bob": "^0.30.2",
+    "typescript": "^5.0.0"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  }
+}
