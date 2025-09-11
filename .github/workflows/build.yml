@@ -6,12 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -37,7 +44,8 @@ jobs:
         git add package.json
         git commit -m "Release $NEW_VERSION [skip ci]" || exit 0
         git tag $NEW_VERSION
-        git push origin main --tags
+        git push origin main
+        git push origin --tags
         
         # Create tarball with built assets
         npm pack
