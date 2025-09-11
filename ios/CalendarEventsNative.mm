@@ -563,7 +563,7 @@ RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-    return std::make_shared<facebook::react::ObjCTurboModule>(params);
+    return std::make_shared<facebook::react::NativeCalendarEventsNativeSpecSpecJSI>(params);
     
 }
 #endif
