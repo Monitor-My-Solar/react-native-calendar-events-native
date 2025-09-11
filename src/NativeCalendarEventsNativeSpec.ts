@@ -20,7 +20,16 @@ export interface Spec extends TurboModule {
     color?: string;
     entityType?: string;
     source?: string;
-  }): Promise<string>;
+  }): Promise<{
+    id: string;
+    title: string;
+    type: string;
+    source: string;
+    isPrimary?: boolean;
+    allowsModifications?: boolean;
+    color?: string;
+    allowedAvailabilities?: Array<string>;
+  }>;
   removeCalendar(calendarId: string): Promise<boolean>;
   fetchAllEvents(
     startDate: string,
