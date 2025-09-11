@@ -54,6 +54,12 @@ if (status === 'authorized' || status === 'granted') {
   // Permission granted
 }
 
+// Create or find a custom calendar
+const calendar = await CalendarEvents.findOrCreateCalendar({
+  title: 'My App Events',
+  color: '#2196F3',
+});
+
 // Create an event
 const eventId = await CalendarEvents.saveEvent({
   title: 'Meeting',
@@ -98,13 +104,24 @@ Check current calendar permission status.
 
 Fetch all available calendars on the device.
 
-#### `findOrCreateCalendar(calendar: Partial<Calendar>): Promise<string>`
+#### `findOrCreateCalendar(calendar: Partial<Calendar>): Promise<Calendar>`
 
-Find an existing calendar or create a new one.
+Find an existing calendar by title or create a new one if it doesn't exist.
+
+```typescript
+const calendar = await CalendarEvents.findOrCreateCalendar({
+  title: 'My Custom Calendar',
+  color: '#FF5722', // Optional: hex color code
+});
+```
 
 #### `removeCalendar(calendarId: string): Promise<boolean>`
 
-Remove a calendar.
+Remove a calendar by its ID. Returns `true` if successful.
+
+```typescript
+const success = await CalendarEvents.removeCalendar(calendarId);
+```
 
 ### Event Methods
 
