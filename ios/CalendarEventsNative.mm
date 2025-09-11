@@ -280,7 +280,7 @@ RCT_EXPORT_METHOD(findEventById:(NSString *)eventId
     });
 }
 
-RCT_EXPORT_METHOD(saveEvent:(NSDictionary *)eventDict
+RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEvent &)eventStruct
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -295,7 +295,35 @@ RCT_EXPORT_METHOD(saveEvent:(NSDictionary *)eventDict
             return;
         }
         
-        [self applyEventProperties:eventDict toEvent:event];
+        // Convert C++ struct to properties safely
+        @try {
+            event.title = eventStruct.title() ?: @"Untitled Event";
+            event.startDate = [self dateFromISO8601String:eventStruct.startDate()];
+            event.endDate = [self dateFromISO8601String:eventStruct.endDate()];
+            
+            NSString *location = eventStruct.location();
+            if (location && location.length > 0) {
+                event.location = location;
+            }
+            
+            NSString *notes = eventStruct.notes();
+            if (notes && notes.length > 0) {
+                event.notes = notes;
+            }
+            
+            NSString *calendarId = eventStruct.calendar();
+            if (calendarId && calendarId.length > 0) {
+                EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+                if (calendar) {
+                    event.calendar = calendar;
+                }
+            } else {
+                event.calendar = self.eventStore.defaultCalendarForNewEvents;
+            }
+        } @catch (NSException *exception) {
+            reject(@"event_property_error", [NSString stringWithFormat:@"Error setting event properties: %@", exception.reason], nil);
+            return;
+        }
         
         NSError *error;
         BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
@@ -621,7 +649,7 @@ RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {
-    return std::make_shared<facebook::react::ObjCTurboModule>(params);
+    return std::make_shared<facebook::react::NativeCalendarEventsNativeSpecSpecJSI>(params);
     
 }
 #endif
