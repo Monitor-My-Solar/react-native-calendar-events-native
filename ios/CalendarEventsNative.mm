@@ -135,70 +135,89 @@ RCT_EXPORT_METHOD(fetchAllCalendars:(RCTPromiseResolveBlock)resolve
 RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    NSString *title = calendarDict[@"title"] ?: @"Calendar";
-    
-    // First, try to find existing calendar
-    NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
-    for (EKCalendar *calendar in calendars) {
-        if ([calendar.title isEqualToString:title]) {
-            resolve(calendar.calendarIdentifier);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
             return;
         }
-    }
-    
-    // Create new calendar
-    EKCalendar *calendar = [EKCalendar calendarForEntityType:EKEntityTypeEvent eventStore:self.eventStore];
-    calendar.title = title;
-    
-    // Find the default source
-    EKSource *localSource = nil;
-    EKSource *iCloudSource = nil;
-    
-    for (EKSource *source in self.eventStore.sources) {
-        if (source.sourceType == EKSourceTypeLocal) {
-            localSource = source;
-        } else if (source.sourceType == EKSourceTypeCalDAV && 
-                   [source.title containsString:@"iCloud"]) {
-            iCloudSource = source;
+        
+        NSString *title = calendarDict[@"title"] ?: @"Calendar";
+        
+        // First, try to find existing calendar
+        NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
+        for (EKCalendar *calendar in calendars) {
+            if ([calendar.title isEqualToString:title]) {
+                resolve(calendar.calendarIdentifier);
+                return;
+            }
         }
-    }
-    
-    calendar.source = iCloudSource ?: localSource ?: self.eventStore.defaultCalendarForNewEvents.source;
-    
-    // Set color if provided
-    NSString *colorHex = calendarDict[@"color"];
-    if (colorHex) {
-        calendar.CGColor = [self colorFromHexString:colorHex];
-    }
-    
-    NSError *error;
-    BOOL success = [self.eventStore saveCalendar:calendar commit:YES error:&error];
-    
-    if (success) {
-        resolve(calendar.calendarIdentifier);
-    } else {
-        reject(@"calendar_creation_failed", error.localizedDescription, error);
-    }
+        
+        // Create new calendar
+        EKCalendar *calendar = [EKCalendar calendarForEntityType:EKEntityTypeEvent eventStore:self.eventStore];
+        if (!calendar) {
+            reject(@"calendar_creation_failed", @"Failed to create calendar object", nil);
+            return;
+        }
+        
+        calendar.title = title;
+        
+        // Find the default source
+        EKSource *localSource = nil;
+        EKSource *iCloudSource = nil;
+        
+        for (EKSource *source in self.eventStore.sources) {
+            if (source.sourceType == EKSourceTypeLocal) {
+                localSource = source;
+            } else if (source.sourceType == EKSourceTypeCalDAV && 
+                       [source.title containsString:@"iCloud"]) {
+                iCloudSource = source;
+            }
+        }
+        
+        calendar.source = iCloudSource ?: localSource ?: self.eventStore.defaultCalendarForNewEvents.source;
+        
+        // Set color if provided
+        NSString *colorHex = calendarDict[@"color"];
+        if (colorHex) {
+            calendar.CGColor = [self colorFromHexString:colorHex];
+        }
+        
+        NSError *error;
+        BOOL success = [self.eventStore saveCalendar:calendar commit:YES error:&error];
+        
+        if (success) {
+            resolve(calendar.calendarIdentifier);
+        } else {
+            reject(@"calendar_creation_failed", error.localizedDescription ?: @"Unknown error", error);
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(removeCalendar:(NSString *)calendarId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-    
-    if (!calendar) {
-        resolve(@NO);
-        return;
-    }
-    
-    NSError *error;
-    BOOL success = [self.eventStore removeCalendar:calendar commit:YES error:&error];
-    
-    if (success) {
-        resolve(@YES);
-    } else {
-        reject(@"calendar_removal_failed", error.localizedDescription, error);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
+        }
+        
+        EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+        
+        if (!calendar) {
+            resolve(@NO);
+            return;
+        }
+        
+        NSError *error;
+        BOOL success = [self.eventStore removeCalendar:calendar commit:YES error:&error];
+        
+        if (success) {
+            resolve(@YES);
+        } else {
+            reject(@"calendar_removal_failed", error.localizedDescription ?: @"Unknown error", error);
+        }
+    });
 }
 
 #pragma mark - Event Methods
@@ -208,103 +227,142 @@ RCT_EXPORT_METHOD(fetchAllEvents:(NSString *)startDate
                   calendarIds:(NSArray<NSString *> *)calendarIds
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    NSDate *start = [self dateFromISO8601String:startDate];
-    NSDate *end = [self dateFromISO8601String:endDate];
-    
-    NSPredicate *predicate;
-    if (calendarIds.count > 0) {
-        NSMutableArray<EKCalendar *> *calendars = [NSMutableArray array];
-        for (NSString *calendarId in calendarIds) {
-            EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-            if (calendar) {
-                [calendars addObject:calendar];
-            }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
         }
-        predicate = [self.eventStore predicateForEventsWithStartDate:start endDate:end calendars:calendars];
-    } else {
-        predicate = [self.eventStore predicateForEventsWithStartDate:start endDate:end calendars:nil];
-    }
-    
-    NSArray<EKEvent *> *events = [self.eventStore eventsMatchingPredicate:predicate];
-    NSMutableArray *eventData = [NSMutableArray array];
-    
-    for (EKEvent *event in events) {
-        [eventData addObject:[self serializeEvent:event]];
-    }
-    
-    resolve(eventData);
+        
+        NSDate *start = [self dateFromISO8601String:startDate];
+        NSDate *end = [self dateFromISO8601String:endDate];
+        
+        NSPredicate *predicate;
+        if (calendarIds.count > 0) {
+            NSMutableArray<EKCalendar *> *calendars = [NSMutableArray array];
+            for (NSString *calendarId in calendarIds) {
+                EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+                if (calendar) {
+                    [calendars addObject:calendar];
+                }
+            }
+            predicate = [self.eventStore predicateForEventsWithStartDate:start endDate:end calendars:calendars];
+        } else {
+            predicate = [self.eventStore predicateForEventsWithStartDate:start endDate:end calendars:nil];
+        }
+        
+        NSArray<EKEvent *> *events = [self.eventStore eventsMatchingPredicate:predicate];
+        NSMutableArray *eventData = [NSMutableArray array];
+        
+        for (EKEvent *event in events) {
+            [eventData addObject:[self serializeEvent:event]];
+        }
+        
+        resolve(eventData);
+    });
 }
 
 RCT_EXPORT_METHOD(findEventById:(NSString *)eventId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
-    
-    if (event) {
-        resolve([self serializeEvent:event]);
-    } else {
-        resolve([NSNull null]);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
+        }
+        
+        EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
+        
+        if (event) {
+            resolve([self serializeEvent:event]);
+        } else {
+            resolve([NSNull null]);
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(saveEvent:(NSDictionary *)eventDict
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    EKEvent *event = [EKEvent eventWithEventStore:self.eventStore];
-    
-    [self applyEventProperties:eventDict toEvent:event];
-    
-    NSError *error;
-    BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
-    
-    if (success) {
-        resolve(event.eventIdentifier);
-    } else {
-        reject(@"event_save_failed", error.localizedDescription, error);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
+        }
+        
+        EKEvent *event = [EKEvent eventWithEventStore:self.eventStore];
+        if (!event) {
+            reject(@"event_creation_failed", @"Failed to create event object", nil);
+            return;
+        }
+        
+        [self applyEventProperties:eventDict toEvent:event];
+        
+        NSError *error;
+        BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
+        
+        if (success) {
+            resolve(event.eventIdentifier);
+        } else {
+            reject(@"event_save_failed", error.localizedDescription ?: @"Unknown error", error);
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
                   event:(NSDictionary *)eventDict
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
-    
-    if (!event) {
-        reject(@"event_not_found", @"Event not found", nil);
-        return;
-    }
-    
-    [self applyEventProperties:eventDict toEvent:event];
-    
-    NSError *error;
-    BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
-    
-    if (success) {
-        resolve(event.eventIdentifier);
-    } else {
-        reject(@"event_update_failed", error.localizedDescription, error);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
+        }
+        
+        EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
+        
+        if (!event) {
+            reject(@"event_not_found", @"Event not found", nil);
+            return;
+        }
+        
+        [self applyEventProperties:eventDict toEvent:event];
+        
+        NSError *error;
+        BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
+        
+        if (success) {
+            resolve(event.eventIdentifier);
+        } else {
+            reject(@"event_update_failed", error.localizedDescription ?: @"Unknown error", error);
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(removeEvent:(NSString *)eventId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
-    EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
-    
-    if (!event) {
-        resolve(@NO);
-        return;
-    }
-    
-    NSError *error;
-    BOOL success = [self.eventStore removeEvent:event span:EKSpanThisEvent commit:YES error:&error];
-    
-    if (success) {
-        resolve(@YES);
-    } else {
-        reject(@"event_removal_failed", error.localizedDescription, error);
-    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.eventStore) {
+            reject(@"event_store_unavailable", @"Event store not available", nil);
+            return;
+        }
+        
+        EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
+        
+        if (!event) {
+            resolve(@NO);
+            return;
+        }
+        
+        NSError *error;
+        BOOL success = [self.eventStore removeEvent:event span:EKSpanThisEvent commit:YES error:&error];
+        
+        if (success) {
+            resolve(@YES);
+        } else {
+            reject(@"event_removal_failed", error.localizedDescription ?: @"Unknown error", error);
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
