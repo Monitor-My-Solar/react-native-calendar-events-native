@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
@@ -36,7 +37,7 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 @ReactModule(name = CalendarEventsNativeModule.NAME)
-public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
+public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
     public static final String NAME = "CalendarEventsNative";
     private static final SimpleDateFormat ISO_8601_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
     
@@ -55,14 +56,14 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
     }
 
     // Permission methods
-    @Override
+    @ReactMethod
     public void requestPermissions(boolean writeOnly, Promise promise) {
         // Permission handling is done in JavaScript side using PermissionsAndroid
         // This is just a placeholder for consistency with iOS
         checkPermissions(writeOnly, promise);
     }
 
-    @Override
+    @ReactMethod
     public void checkPermissions(boolean writeOnly, Promise promise) {
         Context context = getReactApplicationContext();
         boolean hasReadPermission = ContextCompat.checkSelfPermission(context, 
@@ -78,7 +79,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
     }
 
     // Calendar methods
-    @Override
+    @ReactMethod
     public void fetchAllCalendars(Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         
@@ -120,7 +121,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         promise.resolve(calendars);
     }
 
-    @Override
+    @ReactMethod
     public void findOrCreateCalendar(ReadableMap calendarMap, Promise promise) {
         String title = calendarMap.hasKey("title") ? calendarMap.getString("title") : "Calendar";
         
@@ -171,7 +172,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void removeCalendar(String calendarId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         Uri uri = ContentUris.withAppendedId(Calendars.CONTENT_URI, Long.parseLong(calendarId));
@@ -180,7 +181,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
     }
 
     // Event methods
-    @Override
+    @ReactMethod
     public void fetchAllEvents(String startDate, String endDate, ReadableArray calendarIds, Promise promise) {
         long startMillis = parseDate(startDate);
         long endMillis = parseDate(endDate);
@@ -228,7 +229,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         promise.resolve(events);
     }
 
-    @Override
+    @ReactMethod
     public void findEventById(String eventId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
@@ -258,7 +259,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void saveEvent(ReadableMap eventMap, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         ContentValues values = new ContentValues();
@@ -289,7 +290,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void updateEvent(String eventId, ReadableMap eventMap, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         ContentValues values = new ContentValues();
@@ -319,7 +320,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void removeEvent(String eventId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
@@ -327,7 +328,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         promise.resolve(rows > 0);
     }
 
-    @Override
+    @ReactMethod
     public void openEventInCalendar(String eventId, Promise promise) {
         // Android doesn't support opening events directly in the calendar app
         // We can only open the calendar app
@@ -577,7 +578,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         return 1; // Default fallback
     }
 
-    @Override
+    @ReactMethod
     public void saveEvent(String title, String startDate, String endDate, 
                          String location, String notes, String calendarId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
@@ -613,7 +614,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void updateEvent(String eventId, String title, String startDate, String endDate,
                            String location, String notes, String calendarId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
@@ -648,7 +649,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void removeEvent(String eventId, Promise promise) {
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
@@ -661,7 +662,7 @@ public class CalendarEventsNativeModule extends NativeCalendarEventsNativeSpec {
         }
     }
 
-    @Override
+    @ReactMethod
     public void openEventInCalendar(String eventId, Promise promise) {
         // Android doesn't have a direct equivalent to iOS's event editing
         // We can open the calendar app, but not to a specific event
