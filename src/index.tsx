@@ -159,7 +159,7 @@ class CalendarEvents {
   /**
    * Find or create a calendar
    */
-  async findOrCreateCalendar(calendar: Partial<Calendar>): Promise<string> {
+  async findOrCreateCalendar(calendar: Partial<Calendar>): Promise<Calendar> {
     return CalendarEventsNative.findOrCreateCalendar(calendar);
   }
 

@@ -133,8 +133,18 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
         
         if (cursor != null && cursor.moveToFirst()) {
             String calendarId = cursor.getString(0);
+            String displayName = cursor.getString(1);
             cursor.close();
-            promise.resolve(calendarId);
+            
+            WritableMap result = Arguments.createMap();
+            result.putString("id", calendarId);
+            result.putString("title", displayName);
+            result.putString("source", "local");
+            result.putString("type", "local");
+            result.putBoolean("isPrimary", false);
+            result.putBoolean("allowsModifications", true);
+            
+            promise.resolve(result);
             return;
         }
         
@@ -166,7 +176,21 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
         
         Uri uri = cr.insert(builder.build(), values);
         if (uri != null) {
-            promise.resolve(uri.getLastPathSegment());
+            String calendarId = uri.getLastPathSegment();
+            
+            WritableMap result = Arguments.createMap();
+            result.putString("id", calendarId);
+            result.putString("title", title);
+            result.putString("source", "local");
+            result.putString("type", "local");
+            result.putBoolean("isPrimary", false);
+            result.putBoolean("allowsModifications", true);
+            
+            if (calendarMap.hasKey("color")) {
+                result.putString("color", calendarMap.getString("color"));
+            }
+            
+            promise.resolve(result);
         } else {
             promise.reject("CALENDAR_CREATION_FAILED", "Failed to create calendar");
         }
@@ -646,116 +670,6 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
             }
         } catch (Exception e) {
             promise.reject("event_update_failed", "Failed to update event", e);
-        }
-    }
-
-    @ReactMethod
-    public void findOrCreateCalendar(ReadableMap calendarDict, Promise promise) {
-        try {
-            String title = calendarDict.getString("title");
-            String color = calendarDict.hasKey("color") ? calendarDict.getString("color") : "#2196F3";
-            
-            if (title == null || title.isEmpty()) {
-                promise.reject("invalid_calendar", "Calendar title is required");
-                return;
-            }
-            
-            ContentResolver cr = getReactApplicationContext().getContentResolver();
-            
-            // First, try to find existing calendar
-            String[] projection = new String[]{
-                Calendars._ID,
-                Calendars.CALENDAR_DISPLAY_NAME,
-                Calendars.CALENDAR_COLOR
-            };
-            
-            String selection = Calendars.CALENDAR_DISPLAY_NAME + " = ?";
-            String[] selectionArgs = new String[]{title};
-            
-            Cursor cursor = cr.query(
-                Calendars.CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                null
-            );
-            
-            if (cursor != null && cursor.moveToFirst()) {
-                // Calendar exists, return it
-                String calendarId = cursor.getString(0);
-                String displayName = cursor.getString(1);
-                int calendarColor = cursor.getInt(2);
-                cursor.close();
-                
-                WritableMap result = Arguments.createMap();
-                result.putString("id", calendarId);
-                result.putString("title", displayName);
-                result.putString("color", String.format("#%06X", (0xFFFFFF & calendarColor)));
-                result.putString("source", "local");
-                result.putString("type", "local");
-                result.putBoolean("isPrimary", false);
-                result.putBoolean("allowsModifications", true);
-                
-                promise.resolve(result);
-                return;
-            }
-            
-            if (cursor != null) {
-                cursor.close();
-            }
-            
-            // Calendar doesn't exist, create it
-            ContentValues values = new ContentValues();
-            values.put(Calendars.ACCOUNT_NAME, "local_account");
-            values.put(Calendars.ACCOUNT_TYPE, "LOCAL");
-            values.put(Calendars.NAME, title);
-            values.put(Calendars.CALENDAR_DISPLAY_NAME, title);
-            values.put(Calendars.CALENDAR_COLOR, android.graphics.Color.parseColor(color));
-            values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER);
-            values.put(Calendars.OWNER_ACCOUNT, "local_account");
-            values.put(Calendars.CALENDAR_TIME_ZONE, java.util.TimeZone.getDefault().getID());
-            values.put(Calendars.SYNC_EVENTS, 1);
-            values.put(Calendars.VISIBLE, 1);
-            values.put(Calendars.CAN_MODIFY_TIME_ZONE, 1);
-            values.put(Calendars.CAN_ORGANIZER_RESPOND, 1);
-            values.put(Calendars.CAN_PARTIALLY_UPDATE, 1);
-            values.put(Calendars.MAX_REMINDERS, 5);
-            values.put(Calendars.ALLOWED_REMINDERS, "0,1,2");
-            values.put(Calendars.ALLOWED_ATTENDEE_TYPES, "0,1,2,3");
-            values.put(Calendars.ALLOWED_AVAILABILITY, "0,1,2,3");
-            
-            Uri uri = cr.insert(Calendars.CONTENT_URI, values);
-            if (uri != null) {
-                String calendarId = uri.getLastPathSegment();
-                
-                WritableMap result = Arguments.createMap();
-                result.putString("id", calendarId);
-                result.putString("title", title);
-                result.putString("color", color);
-                result.putString("source", "local");
-                result.putString("type", "local");
-                result.putBoolean("isPrimary", false);
-                result.putBoolean("allowsModifications", true);
-                
-                promise.resolve(result);
-            } else {
-                promise.reject("calendar_creation_failed", "Failed to create calendar");
-            }
-        } catch (Exception e) {
-            promise.reject("calendar_creation_failed", "Failed to create calendar", e);
-        }
-    }
-
-    @ReactMethod
-    public void removeCalendar(String calendarId, Promise promise) {
-        try {
-            ContentResolver cr = getReactApplicationContext().getContentResolver();
-            Uri uri = ContentUris.withAppendedId(Calendars.CONTENT_URI, Long.parseLong(calendarId));
-            
-            int rowsDeleted = cr.delete(uri, null, null);
-            promise.resolve(rowsDeleted > 0);
-        } catch (Exception e) {
-            promise.reject("calendar_removal_failed", "Failed to remove calendar", e);
         }
     }
 }
