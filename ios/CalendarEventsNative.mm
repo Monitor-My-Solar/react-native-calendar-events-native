@@ -295,33 +295,57 @@ RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEv
             return;
         }
         
-        // Convert C++ struct to properties safely
+        // Convert C++ struct to properties with memory safety
         @try {
-            event.title = eventStruct.title() ?: @"Untitled Event";
-            event.startDate = [self dateFromISO8601String:eventStruct.startDate()];
-            event.endDate = [self dateFromISO8601String:eventStruct.endDate()];
+            // Get all string properties first to avoid multiple struct access
+            NSString *title = nil;
+            NSString *startDate = nil;
+            NSString *endDate = nil;
+            NSString *location = nil;
+            NSString *notes = nil;
+            NSString *url = nil;
+            NSString *calendarId = nil;
+            BOOL allDay = NO;
+            BOOL hasAllDay = NO;
             
-            NSString *location = eventStruct.location();
+            @try {
+                title = eventStruct.title();
+                startDate = eventStruct.startDate();
+                endDate = eventStruct.endDate();
+                location = eventStruct.location();
+                notes = eventStruct.notes();
+                url = eventStruct.url();
+                calendarId = eventStruct.calendar();
+                if (eventStruct.allDay().has_value()) {
+                    allDay = eventStruct.allDay().value();
+                    hasAllDay = YES;
+                }
+            } @catch (NSException *structException) {
+                reject(@"struct_access_error", [NSString stringWithFormat:@"Error accessing C++ struct: %@", structException.reason], nil);
+                return;
+            }
+            
+            // Now safely set the event properties
+            event.title = title ?: @"Untitled Event";
+            event.startDate = [self dateFromISO8601String:startDate];
+            event.endDate = [self dateFromISO8601String:endDate];
+            
             if (location && location.length > 0) {
                 event.location = location;
             }
             
-            NSString *notes = eventStruct.notes();
             if (notes && notes.length > 0) {
                 event.notes = notes;
             }
             
-            NSString *url = eventStruct.url();
             if (url && url.length > 0) {
                 event.URL = [NSURL URLWithString:url];
             }
             
-            // Handle allDay property
-            if (eventStruct.allDay().has_value()) {
-                event.allDay = eventStruct.allDay().value();
+            if (hasAllDay) {
+                event.allDay = allDay;
             }
             
-            NSString *calendarId = eventStruct.calendar();
             if (calendarId && calendarId.length > 0) {
                 EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
                 if (calendar) {
