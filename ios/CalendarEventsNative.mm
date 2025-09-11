@@ -280,7 +280,12 @@ RCT_EXPORT_METHOD(findEventById:(NSString *)eventId
     });
 }
 
-RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEvent &)eventStruct
+RCT_EXPORT_METHOD(saveEvent:(NSString *)title
+                  startDate:(NSString *)startDate
+                  endDate:(NSString *)endDate
+                  location:(NSString *)location
+                  notes:(NSString *)notes
+                  calendarId:(NSString *)calendarId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -295,108 +300,26 @@ RCT_EXPORT_METHOD(saveEvent:(JS::NativeCalendarEventsNativeSpec::SpecSaveEventEv
             return;
         }
         
-        // Convert C++ struct to properties with memory safety
-        @try {
-            // Get all string properties first to avoid multiple struct access
-            NSString *title = nil;
-            NSString *startDate = nil;
-            NSString *endDate = nil;
-            NSString *location = nil;
-            NSString *notes = nil;
-            NSString *url = nil;
-            NSString *calendarId = nil;
-            BOOL allDay = NO;
-            BOOL hasAllDay = NO;
-            
-            @try {
-                title = eventStruct.title();
-                startDate = eventStruct.startDate();
-                endDate = eventStruct.endDate();
-                location = eventStruct.location();
-                notes = eventStruct.notes();
-                url = eventStruct.url();
-                calendarId = eventStruct.calendar();
-                if (eventStruct.allDay().has_value()) {
-                    allDay = eventStruct.allDay().value();
-                    hasAllDay = YES;
-                }
-            } @catch (NSException *structException) {
-                reject(@"struct_access_error", [NSString stringWithFormat:@"Error accessing C++ struct: %@", structException.reason], nil);
-                return;
+        // Simple property setting - no complex C++ structs!
+        event.title = title ?: @"Untitled Event";
+        event.startDate = [self dateFromISO8601String:startDate];
+        event.endDate = [self dateFromISO8601String:endDate];
+        
+        if (location && location.length > 0) {
+            event.location = location;
+        }
+        
+        if (notes && notes.length > 0) {
+            event.notes = notes;
+        }
+        
+        if (calendarId && calendarId.length > 0) {
+            EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
+            if (calendar) {
+                event.calendar = calendar;
             }
-            
-            // Now safely set the event properties
-            event.title = title ?: @"Untitled Event";
-            event.startDate = [self dateFromISO8601String:startDate];
-            event.endDate = [self dateFromISO8601String:endDate];
-            
-            if (location && location.length > 0) {
-                event.location = location;
-            }
-            
-            if (notes && notes.length > 0) {
-                event.notes = notes;
-            }
-            
-            if (url && url.length > 0) {
-                event.URL = [NSURL URLWithString:url];
-            }
-            
-            if (hasAllDay) {
-                event.allDay = allDay;
-            }
-            
-            if (calendarId && calendarId.length > 0) {
-                EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-                if (calendar) {
-                    event.calendar = calendar;
-                }
-            } else {
-                event.calendar = self.eventStore.defaultCalendarForNewEvents;
-            }
-            
-            // Handle alarms safely
-            if (eventStruct.alarms().has_value()) {
-                auto alarmsVector = eventStruct.alarms().value();
-                NSMutableArray<EKAlarm *> *ekAlarms = [NSMutableArray array];
-                
-                for (size_t i = 0; i < alarmsVector.size(); i++) {
-                    auto alarmStruct = alarmsVector[i];
-                    EKAlarm *alarm = nil;
-                    
-                    @try {
-                        // Check if it's a date-based alarm
-                        NSString *alarmDate = alarmStruct.date();
-                        if (alarmDate && alarmDate.length > 0) {
-                            NSDate *date = [self dateFromISO8601String:alarmDate];
-                            if (date) {
-                                alarm = [EKAlarm alarmWithAbsoluteDate:date];
-                            }
-                        }
-                        // Check if it's a minutes-based alarm
-                        else if (alarmStruct.minutes().has_value()) {
-                            double minutes = alarmStruct.minutes().value();
-                            NSTimeInterval offset = -minutes * 60; // Negative for "before" event
-                            alarm = [EKAlarm alarmWithRelativeOffset:offset];
-                        }
-                        
-                        if (alarm) {
-                            [ekAlarms addObject:alarm];
-                        }
-                    } @catch (NSException *exception) {
-                        NSLog(@"⚠️ Error creating alarm: %@", exception.reason);
-                        // Continue with other alarms
-                    }
-                }
-                
-                if (ekAlarms.count > 0) {
-                    event.alarms = ekAlarms;
-                }
-            }
-            
-        } @catch (NSException *exception) {
-            reject(@"event_property_error", [NSString stringWithFormat:@"Error setting event properties: %@", exception.reason], nil);
-            return;
+        } else {
+            event.calendar = self.eventStore.defaultCalendarForNewEvents;
         }
         
         NSError *error;

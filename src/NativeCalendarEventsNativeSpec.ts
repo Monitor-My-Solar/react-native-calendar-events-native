@@ -102,43 +102,14 @@ export interface Spec extends TurboModule {
     allDay?: boolean;
     calendar?: string;
   } | null>;
-  saveEvent(event: {
-    title: string;
-    startDate: string;
-    endDate: string;
-    location?: string;
-    notes?: string;
-    url?: string;
-    alarms?: Array<{
-      date?: string;
-      structuredLocation?: {
-        title?: string;
-        proximity?: string;
-        radius?: number;
-        coords?: {
-          latitude: number;
-          longitude: number;
-        };
-      };
-      minutes?: number;
-    }>;
-    recurrence?: {
-      frequency: string;
-      interval?: number;
-      endDate?: string;
-      occurrence?: number;
-      daysOfWeek?: Array<{
-        dayOfWeek: number;
-        weekNumber?: number;
-      }>;
-      daysOfMonth?: Array<number>;
-      monthsOfYear?: Array<number>;
-      daysOfYear?: Array<number>;
-    };
-    availability?: string;
-    allDay?: boolean;
-    calendar?: string;
-  }): Promise<string>;
+  saveEvent(
+    title: string,
+    startDate: string,
+    endDate: string,
+    location: string,
+    notes: string,
+    calendarId: string
+  ): Promise<string>;
   updateEvent(
     eventId: string,
     event: {

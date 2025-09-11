@@ -196,30 +196,21 @@ class CalendarEvents {
    * Save an event
    */
   async saveEvent(event: CalendarEvent): Promise<string> {
-    const processedEvent: any = {
-      ...event,
-      startDate: typeof event.startDate === 'string' 
-        ? event.startDate 
-        : event.startDate.toISOString(),
-      endDate: typeof event.endDate === 'string' 
-        ? event.endDate 
-        : event.endDate.toISOString(),
-    };
+    const startDate = typeof event.startDate === 'string' 
+      ? event.startDate 
+      : event.startDate.toISOString();
+    const endDate = typeof event.endDate === 'string' 
+      ? event.endDate 
+      : event.endDate.toISOString();
     
-    if (event.alarms) {
-      processedEvent.alarms = event.alarms.map((alarm: CalendarAlarm) => ({
-        ...alarm,
-        date: alarm.date && typeof alarm.date !== 'string' 
-          ? alarm.date.toISOString() 
-          : alarm.date,
-        structuredLocation: alarm.structuredLocation ? {
-          ...alarm.structuredLocation,
-          proximity: alarm.structuredLocation.proximity || undefined
-        } : undefined
-      }));
-    }
-    
-    return CalendarEventsNative.saveEvent(processedEvent);
+    return CalendarEventsNative.saveEvent(
+      event.title,
+      startDate,
+      endDate,
+      event.location || '',
+      event.notes || '',
+      event.calendar || ''
+    );
   }
 
   /**
