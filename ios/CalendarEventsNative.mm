@@ -16,7 +16,7 @@
 
 @implementation CalendarEventsNative
 
-RCT_EXPORT_MODULE()
+RCT_EXPORT_MODULE(RNCalendarEventsNativeSpec)
 
 - (instancetype)init {
     if (self = [super init]) {
