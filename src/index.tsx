@@ -71,10 +71,19 @@ export type AllPermissionStatus = AuthorizationStatus | PermissionStatus;
 
 class CalendarEvents {
   constructor() {
-    // Log available methods on class instantiation
+    // Log what's actually available to JavaScript
     console.log('🚀 CalendarEvents: JavaScript wrapper initialized!');
-    console.log('📋 Available methods:', Object.getOwnPropertyNames(CalendarEventsNative));
     console.log('🔍 CalendarEventsNative object:', CalendarEventsNative);
+    console.log('📋 Actually available methods:');
+    
+    const methods = ['requestPermissions', 'checkPermissions', 'fetchAllCalendars', 'findOrCreateCalendar', 'removeCalendar', 'fetchAllEvents', 'findEventById', 'saveEvent', 'updateEvent', 'removeEvent', 'openEventInCalendar', 'debugModuleMethods'];
+    
+    methods.forEach(method => {
+      const isAvailable = typeof (CalendarEventsNative as any)[method] === 'function';
+      console.log(`   ${isAvailable ? '✅' : '❌'} ${method}: ${typeof (CalendarEventsNative as any)[method]}`);
+    });
+    
+    console.log('🔍 All CalendarEventsNative properties:', Object.getOwnPropertyNames(CalendarEventsNative));
   }
 
   /**
