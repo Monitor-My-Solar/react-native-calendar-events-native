@@ -648,32 +648,4 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
             promise.reject("event_update_failed", "Failed to update event", e);
         }
     }
-
-    @ReactMethod
-    public void removeEvent(String eventId, Promise promise) {
-        ContentResolver cr = getReactApplicationContext().getContentResolver();
-        Uri uri = ContentUris.withAppendedId(Events.CONTENT_URI, Long.parseLong(eventId));
-        
-        try {
-            int rowsDeleted = cr.delete(uri, null, null);
-            promise.resolve(rowsDeleted > 0);
-        } catch (Exception e) {
-            promise.reject("event_removal_failed", "Failed to remove event", e);
-        }
-    }
-
-    @ReactMethod
-    public void openEventInCalendar(String eventId, Promise promise) {
-        // Android doesn't have a direct equivalent to iOS's event editing
-        // We can open the calendar app, but not to a specific event
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse("content://com.android.calendar/time"));
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getReactApplicationContext().startActivity(intent);
-            promise.resolve(null);
-        } catch (Exception e) {
-            promise.reject("calendar_open_failed", "Failed to open calendar", e);
-        }
-    }
 }
