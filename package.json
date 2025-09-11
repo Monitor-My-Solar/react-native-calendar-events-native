@@ -1,6 +1,6 @@
 {
   "name": "react-native-calendar-events-native",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "React Native module for native calendar event creation on iOS and Android",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
