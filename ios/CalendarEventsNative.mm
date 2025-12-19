@@ -96,37 +96,42 @@ RCT_EXPORT_METHOD(checkPermissions:(BOOL)writeOnly
 
 #pragma mark - Calendar Methods
 
+// Helper method to convert EKCalendar to NSDictionary
+- (NSDictionary *)calendarToDict:(EKCalendar *)calendar {
+    NSMutableDictionary *calDict = [NSMutableDictionary dictionary];
+    calDict[@"id"] = calendar.calendarIdentifier;
+    calDict[@"title"] = calendar.title;
+    calDict[@"type"] = @(calendar.type);
+    calDict[@"source"] = calendar.source.title ?: @"";
+    calDict[@"isPrimary"] = @(calendar.type == EKCalendarTypeLocal);
+    calDict[@"allowsModifications"] = @(calendar.allowsContentModifications);
+    calDict[@"color"] = [self hexStringFromColor:calendar.CGColor];
+    
+    NSMutableArray *availabilities = [NSMutableArray array];
+    if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityBusy) {
+        [availabilities addObject:@"busy"];
+    }
+    if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityFree) {
+        [availabilities addObject:@"free"];
+    }
+    if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityTentative) {
+        [availabilities addObject:@"tentative"];
+    }
+    if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityUnavailable) {
+        [availabilities addObject:@"unavailable"];
+    }
+    calDict[@"allowedAvailabilities"] = availabilities;
+    
+    return calDict;
+}
+
 RCT_EXPORT_METHOD(fetchAllCalendars:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
     NSMutableArray *calendarData = [NSMutableArray array];
     
     for (EKCalendar *calendar in calendars) {
-        NSMutableDictionary *calDict = [NSMutableDictionary dictionary];
-        calDict[@"id"] = calendar.calendarIdentifier;
-        calDict[@"title"] = calendar.title;
-        calDict[@"type"] = @(calendar.type);
-        calDict[@"source"] = calendar.source.title ?: @"";
-        calDict[@"isPrimary"] = @(calendar.type == EKCalendarTypeLocal);
-        calDict[@"allowsModifications"] = @(calendar.allowsContentModifications);
-        calDict[@"color"] = [self hexStringFromColor:calendar.CGColor];
-        
-        NSMutableArray *availabilities = [NSMutableArray array];
-        if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityBusy) {
-            [availabilities addObject:@"busy"];
-        }
-        if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityFree) {
-            [availabilities addObject:@"free"];
-        }
-        if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityTentative) {
-            [availabilities addObject:@"tentative"];
-        }
-        if (calendar.supportedEventAvailabilities & EKCalendarEventAvailabilityUnavailable) {
-            [availabilities addObject:@"unavailable"];
-        }
-        calDict[@"allowedAvailabilities"] = availabilities;
-        
-        [calendarData addObject:calDict];
+        [calendarData addObject:[self calendarToDict:calendar]];
     }
     
     resolve(calendarData);
@@ -145,9 +150,11 @@ RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
         
         // First, try to find existing calendar
         NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
-        for (EKCalendar *calendar in calendars) {
-            if ([calendar.title isEqualToString:title]) {
-                resolve(calendar.calendarIdentifier);
+        for (EKCalendar *existingCal in calendars) {
+            if ([existingCal.title isEqualToString:title]) {
+                // Return full calendar object
+                NSDictionary *calDict = [self calendarToDict:existingCal];
+                resolve(calDict);
                 return;
             }
         }
@@ -186,7 +193,9 @@ RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
         BOOL success = [self.eventStore saveCalendar:calendar commit:YES error:&error];
         
         if (success) {
-            resolve(calendar.calendarIdentifier);
+            // Return full calendar object
+            NSDictionary *calDict = [self calendarToDict:calendar];
+            resolve(calDict);
         } else {
             reject(@"calendar_creation_failed", error.localizedDescription ?: @"Unknown error", error);
         }
