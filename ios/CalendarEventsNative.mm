@@ -137,7 +137,10 @@ RCT_EXPORT_METHOD(fetchAllCalendars:(RCTPromiseResolveBlock)resolve
     resolve(calendarData);
 }
 
-RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
+RCT_EXPORT_METHOD(findOrCreateCalendar:(NSString *)title
+                  color:(NSString *)colorHex
+                  entityType:(NSString *)entityType
+                  source:(NSString *)sourceName
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -146,12 +149,12 @@ RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
             return;
         }
         
-        NSString *title = calendarDict[@"title"] ?: @"Calendar";
+        NSString *calendarTitle = title ?: @"Calendar";
         
         // First, try to find existing calendar
         NSArray<EKCalendar *> *calendars = [self.eventStore calendarsForEntityType:EKEntityTypeEvent];
         for (EKCalendar *existingCal in calendars) {
-            if ([existingCal.title isEqualToString:title]) {
+            if ([existingCal.title isEqualToString:calendarTitle]) {
                 // Return full calendar object
                 NSDictionary *calDict = [self calendarToDict:existingCal];
                 resolve(calDict);
@@ -166,7 +169,7 @@ RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
             return;
         }
         
-        calendar.title = title;
+        calendar.title = calendarTitle;
         
         // Find the default source
         EKSource *localSource = nil;
@@ -184,8 +187,7 @@ RCT_EXPORT_METHOD(findOrCreateCalendar:(NSDictionary *)calendarDict
         calendar.source = iCloudSource ?: localSource ?: self.eventStore.defaultCalendarForNewEvents.source;
         
         // Set color if provided
-        NSString *colorHex = calendarDict[@"color"];
-        if (colorHex) {
+        if (colorHex && colorHex.length > 0) {
             calendar.CGColor = [self colorFromHexString:colorHex];
         }
         

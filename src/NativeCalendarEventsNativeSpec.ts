@@ -15,12 +15,12 @@ export interface Spec extends TurboModule {
     color?: string;
     allowedAvailabilities?: Array<string>;
   }>>;
-  findOrCreateCalendar(calendar: {
-    title?: string;
-    color?: string;
-    entityType?: string;
-    source?: string;
-  }): Promise<{
+  findOrCreateCalendar(
+    title: string,
+    color?: string,
+    entityType?: string,
+    source?: string
+  ): Promise<{
     id: string;
     title: string;
     type: string;

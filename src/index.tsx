@@ -160,7 +160,12 @@ class CalendarEvents {
    * Find or create a calendar
    */
   async findOrCreateCalendar(calendar: Partial<Calendar>): Promise<Calendar> {
-    return CalendarEventsNative.findOrCreateCalendar(calendar);
+    return CalendarEventsNative.findOrCreateCalendar(
+      calendar.title || 'Calendar',
+      calendar.color,
+      undefined, // entityType
+      calendar.source
+    );
   }
 
   /**
