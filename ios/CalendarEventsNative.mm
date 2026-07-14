@@ -291,12 +291,7 @@ RCT_EXPORT_METHOD(findEventById:(NSString *)eventId
     });
 }
 
-RCT_EXPORT_METHOD(saveEvent:(NSString *)title
-                  startDate:(NSString *)startDate
-                  endDate:(NSString *)endDate
-                  location:(NSString *)location
-                  notes:(NSString *)notes
-                  calendarId:(NSString *)calendarId
+RCT_EXPORT_METHOD(saveEvent:(NSDictionary *)details
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -304,38 +299,20 @@ RCT_EXPORT_METHOD(saveEvent:(NSString *)title
             reject(@"event_store_unavailable", @"Event store not available", nil);
             return;
         }
-        
+
         EKEvent *event = [EKEvent eventWithEventStore:self.eventStore];
         if (!event) {
             reject(@"event_creation_failed", @"Failed to create event object", nil);
             return;
         }
-        
-        // Simple property setting - no complex C++ structs!
-        event.title = title ?: @"Untitled Event";
-        event.startDate = [self dateFromISO8601String:startDate];
-        event.endDate = [self dateFromISO8601String:endDate];
-        
-        if (location && location.length > 0) {
-            event.location = location;
-        }
-        
-        if (notes && notes.length > 0) {
-            event.notes = notes;
-        }
-        
-        if (calendarId && calendarId.length > 0) {
-            EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-            if (calendar) {
-                event.calendar = calendar;
-            }
-        } else {
-            event.calendar = self.eventStore.defaultCalendarForNewEvents;
-        }
-        
+
+        // Apply the full event object: title, dates, location, notes, url, allDay,
+        // calendar, availability, alarms, recurrence, timeZone.
+        [self applyEventProperties:details toEvent:event];
+
         NSError *error;
         BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
-        
+
         if (success) {
             resolve(event.eventIdentifier);
         } else {
@@ -345,12 +322,7 @@ RCT_EXPORT_METHOD(saveEvent:(NSString *)title
 }
 
 RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
-                  title:(NSString *)title
-                  startDate:(NSString *)startDate
-                  endDate:(NSString *)endDate
-                  location:(NSString *)location
-                  notes:(NSString *)notes
-                  calendarId:(NSString *)calendarId
+                  details:(NSDictionary *)details
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -358,40 +330,21 @@ RCT_EXPORT_METHOD(updateEvent:(NSString *)eventId
             reject(@"event_store_unavailable", @"Event store not available", nil);
             return;
         }
-        
+
         EKEvent *event = [self.eventStore eventWithIdentifier:eventId];
-        
+
         if (!event) {
             reject(@"event_not_found", @"Event not found", nil);
             return;
         }
-        
-        // Update event properties directly
-        if (title && title.length > 0) {
-            event.title = title;
-        }
-        if (startDate && startDate.length > 0) {
-            event.startDate = [self dateFromISO8601String:startDate];
-        }
-        if (endDate && endDate.length > 0) {
-            event.endDate = [self dateFromISO8601String:endDate];
-        }
-        if (location && location.length > 0) {
-            event.location = location;
-        }
-        if (notes && notes.length > 0) {
-            event.notes = notes;
-        }
-        if (calendarId && calendarId.length > 0) {
-            EKCalendar *calendar = [self.eventStore calendarWithIdentifier:calendarId];
-            if (calendar) {
-                event.calendar = calendar;
-            }
-        }
-        
+
+        // Only the keys present in `details` are applied, so a partial update
+        // leaves the other properties (and existing alarms/recurrence) untouched.
+        [self applyEventProperties:details toEvent:event];
+
         NSError *error;
         BOOL success = [self.eventStore saveEvent:event span:EKSpanThisEvent commit:YES error:&error];
-        
+
         if (success) {
             resolve(event.eventIdentifier);
         } else {
@@ -454,21 +407,43 @@ RCT_EXPORT_METHOD(openEventInCalendar:(NSString *)eventId
 #pragma mark - Helper Methods
 
 - (void)applyEventProperties:(NSDictionary *)eventDict toEvent:(EKEvent *)event {
-    event.title = eventDict[@"title"];
-    event.startDate = [self dateFromISO8601String:eventDict[@"startDate"]];
-    event.endDate = [self dateFromISO8601String:eventDict[@"endDate"]];
-    event.location = eventDict[@"location"];
-    event.notes = eventDict[@"notes"];
-    event.URL = eventDict[@"url"] ? [NSURL URLWithString:eventDict[@"url"]] : nil;
-    event.allDay = [eventDict[@"allDay"] boolValue];
-    
-    // Set calendar
+    // Only apply keys that are present, so a partial updateEvent() leaves the
+    // remaining properties untouched instead of clearing them.
+    if (eventDict[@"title"]) {
+        event.title = eventDict[@"title"];
+    }
+    if (eventDict[@"startDate"]) {
+        event.startDate = [self dateFromISO8601String:eventDict[@"startDate"]];
+    }
+    if (eventDict[@"endDate"]) {
+        event.endDate = [self dateFromISO8601String:eventDict[@"endDate"]];
+    }
+    if (eventDict[@"location"]) {
+        event.location = eventDict[@"location"];
+    }
+    if (eventDict[@"notes"]) {
+        event.notes = eventDict[@"notes"];
+    }
+    if (eventDict[@"url"]) {
+        event.URL = [NSURL URLWithString:eventDict[@"url"]];
+    }
+    if (eventDict[@"allDay"]) {
+        event.allDay = [eventDict[@"allDay"] boolValue];
+    }
+    if (eventDict[@"timeZone"]) {
+        NSTimeZone *timeZone = [NSTimeZone timeZoneWithName:eventDict[@"timeZone"]];
+        if (timeZone) {
+            event.timeZone = timeZone;
+        }
+    }
+
+    // Set calendar when provided; only fall back to the default for a new event.
     if (eventDict[@"calendar"]) {
         EKCalendar *calendar = [self.eventStore calendarWithIdentifier:eventDict[@"calendar"]];
         if (calendar) {
             event.calendar = calendar;
         }
-    } else {
+    } else if (!event.calendar) {
         event.calendar = self.eventStore.defaultCalendarForNewEvents;
     }
     

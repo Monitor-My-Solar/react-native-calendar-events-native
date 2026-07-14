@@ -198,46 +198,61 @@ class CalendarEvents {
   }
 
   /**
-   * Save an event
+   * Convert a (partial) event into the plain object the native module expects.
+   * Date instances become ISO-8601 strings, and only the keys that are present
+   * are forwarded so that updateEvent() behaves as a partial update.
    */
-  async saveEvent(event: CalendarEvent): Promise<string> {
-    const startDate = typeof event.startDate === 'string' 
-      ? event.startDate 
-      : event.startDate.toISOString();
-    const endDate = typeof event.endDate === 'string' 
-      ? event.endDate 
-      : event.endDate.toISOString();
-    
-    return CalendarEventsNative.saveEvent(
-      event.title,
-      startDate,
-      endDate,
-      event.location || '',
-      event.notes || '',
-      event.calendar || ''
-    );
+  private toNativeDetails(event: Partial<CalendarEvent>): Object {
+    const details: { [key: string]: any } = { ...event };
+
+    if (event.startDate !== undefined) {
+      details.startDate =
+        typeof event.startDate === 'string'
+          ? event.startDate
+          : event.startDate.toISOString();
+    }
+    if (event.endDate !== undefined) {
+      details.endDate =
+        typeof event.endDate === 'string'
+          ? event.endDate
+          : event.endDate.toISOString();
+    }
+    if (event.alarms) {
+      details.alarms = event.alarms.map((alarm) => ({
+        ...alarm,
+        date:
+          alarm.date instanceof Date ? alarm.date.toISOString() : alarm.date,
+      }));
+    }
+    if (event.recurrence?.endDate) {
+      details.recurrence = {
+        ...event.recurrence,
+        endDate:
+          event.recurrence.endDate instanceof Date
+            ? event.recurrence.endDate.toISOString()
+            : event.recurrence.endDate,
+      };
+    }
+
+    return details;
   }
 
   /**
-   * Update an event
+   * Save an event. Honors title, start/end dates, location, notes, url, allDay,
+   * calendar, availability, alarms, recurrence and timeZone.
    */
-  async updateEvent(eventId: string, event: Partial<CalendarEvent>): Promise<string> {
-    const startDate = event.startDate 
-      ? (typeof event.startDate === 'string' ? event.startDate : event.startDate.toISOString())
-      : '';
-    const endDate = event.endDate 
-      ? (typeof event.endDate === 'string' ? event.endDate : event.endDate.toISOString())
-      : '';
-    
-    return CalendarEventsNative.updateEvent(
-      eventId,
-      event.title || '',
-      startDate,
-      endDate,
-      event.location || '',
-      event.notes || '',
-      event.calendar || ''
-    );
+  async saveEvent(event: CalendarEvent): Promise<string> {
+    return CalendarEventsNative.saveEvent(this.toNativeDetails(event));
+  }
+
+  /**
+   * Update an existing event. Only the fields provided are changed.
+   */
+  async updateEvent(
+    eventId: string,
+    event: Partial<CalendarEvent>
+  ): Promise<string> {
+    return CalendarEventsNative.updateEvent(eventId, this.toNativeDetails(event));
   }
 
   /**
