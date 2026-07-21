@@ -29,6 +29,7 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.turbomodule.core.interfaces.TurboModule;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -37,8 +38,11 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 @ReactModule(name = CalendarEventsNativeModule.NAME)
-public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
-    public static final String NAME = "CalendarEventsNative";
+public class CalendarEventsNativeModule extends ReactContextBaseJavaModule implements TurboModule {
+    // Must match the name JS requests via TurboModuleRegistry.getEnforcing(...)
+    // and the iOS RCT_EXPORT_MODULE(...) name, otherwise the TurboModule is not
+    // found on Android under the new architecture.
+    public static final String NAME = "RNCalendarEventsNativeSpec";
     private static final SimpleDateFormat ISO_8601_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
     
     static {
@@ -53,6 +57,13 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
     @NonNull
     public String getName() {
         return NAME;
+    }
+
+    // Declared in the JS spec (NativeCalendarEventsNativeSpec.ts); required so the
+    // codegen method map matches the native implementation.
+    @ReactMethod
+    public void debugModuleMethods(Promise promise) {
+        promise.resolve("Methods logged to console");
     }
 
     // Permission methods
@@ -122,9 +133,11 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void findOrCreateCalendar(ReadableMap calendarMap, Promise promise) {
-        String title = calendarMap.hasKey("title") ? calendarMap.getString("title") : "Calendar";
-        
+    public void findOrCreateCalendar(String title, @Nullable String color, @Nullable String entityType, @Nullable String source, Promise promise) {
+        if (title == null) {
+            title = "Calendar";
+        }
+
         // First, try to find existing calendar
         ContentResolver cr = getReactApplicationContext().getContentResolver();
         String[] projection = new String[] { Calendars._ID, Calendars.CALENDAR_DISPLAY_NAME };
@@ -163,10 +176,9 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
         values.put(Calendars.VISIBLE, 1);
         values.put(Calendars.SYNC_EVENTS, 1);
         
-        if (calendarMap.hasKey("color")) {
-            String colorHex = calendarMap.getString("color");
-            int color = (int) Long.parseLong(colorHex.replace("#", ""), 16);
-            values.put(Calendars.CALENDAR_COLOR, color);
+        if (color != null) {
+            int colorInt = (int) Long.parseLong(color.replace("#", ""), 16);
+            values.put(Calendars.CALENDAR_COLOR, colorInt);
         }
         
         Uri.Builder builder = Calendars.CONTENT_URI.buildUpon();
@@ -186,8 +198,8 @@ public class CalendarEventsNativeModule extends ReactContextBaseJavaModule {
             result.putBoolean("isPrimary", false);
             result.putBoolean("allowsModifications", true);
             
-            if (calendarMap.hasKey("color")) {
-                result.putString("color", calendarMap.getString("color"));
+            if (color != null) {
+                result.putString("color", color);
             }
             
             promise.resolve(result);

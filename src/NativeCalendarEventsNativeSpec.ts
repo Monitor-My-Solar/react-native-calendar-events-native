@@ -111,23 +111,12 @@ export interface Spec extends TurboModule {
     allDay?: boolean;
     calendar?: string;
   } | null>;
-  saveEvent(
-    title: string,
-    startDate: string,
-    endDate: string,
-    location: string,
-    notes: string,
-    calendarId: string
-  ): Promise<string>;
-  updateEvent(
-    eventId: string,
-    title: string,
-    startDate: string,
-    endDate: string,
-    location: string,
-    notes: string,
-    calendarId: string
-  ): Promise<string>;
+  // `details` is a full event object (title, startDate, endDate, location, notes,
+  // url, allDay, calendar, availability, alarms, recurrence, timeZone). Typed as
+  // `Object` so codegen maps it to NSDictionary/ReadableMap (a structured type
+  // would emit a C++ struct that conflicts with the native NSDictionary impl).
+  saveEvent(details: Object): Promise<string>;
+  updateEvent(eventId: string, details: Object): Promise<string>;
   removeEvent(eventId: string): Promise<boolean>;
   openEventInCalendar?(eventId: string): Promise<void>;
 }
